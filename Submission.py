@@ -1,4 +1,7 @@
 
+class OpenEnvNavigation(WarehouseEnv): # Ise WarehouseEnv ki jagah likhein
+    pass
+
 ```python
 # Simple usage example
 from warehouse_env import WarehouseEnv
