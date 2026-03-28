@@ -1,3 +1,12 @@
-from Submission import OpenEnvNavigation
-env = OpenEnvNavigation()
-print("Scaler Validation: OK")
+import torch
+from submission import OpenEnvNavigation
+
+def main():
+    env = OpenEnvNavigation()
+    obs = env.reset()
+    print("Reset OK")
+    obs, reward, done = env.step(0)
+    print("Step OK")
+
+if __name__ == "__main__":
+    main()
