@@ -1,13 +1,12 @@
 FROM python:3.9-slim
 
-# Set working directory
 WORKDIR /app
 
-# Install dependencies
+# Sabse pehle basic requirements install karein
 RUN pip install --no-cache-dir torch numpy
 
-# Copy all project files
+# Saari files copy karein
 COPY . .
 
-# Command to run the inference script
+# Scaler system ko batayein ki inference.py main entry point hai
 CMD ["python", "inference.py"]
