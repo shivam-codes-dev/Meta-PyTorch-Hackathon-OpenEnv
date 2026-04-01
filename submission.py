@@ -2,29 +2,51 @@ import torch
 import numpy as np
 
 class OpenEnvNavigation:
-    def __init__(self, grid_size=10):
-        self.grid_size = grid_size
-        self.agent_pos = np.array([0, 0])
-        self.target_pos = np.array([9, 9])
-
-    def reset(self):
-        self.agent_pos = np.array([0, 0])
-        # Return observation as a torch tensor
-        obs = np.concatenate([self.agent_pos, self.target_pos]).astype(np.float32)
-        return torch.from_numpy(obs)
-
-    def step(self, action):
-        # 0: Up, 1: Down, 2: Left, 3: Right
-        if action == 0: self.agent_pos[1] = min(9, self.agent_pos[1] + 1)
-        elif action == 1: self.agent_pos[1] = max(0, self.agent_pos[1] - 1)
-        elif action == 2: self.agent_pos[0] = max(0, self.agent_pos[0] - 1)
-        elif action == 3: self.agent_pos[0] = min(9, self.agent_pos[0] + 1)
+    def __init__(self, size=10):
+        self.size = size
+        self.agent_pos = None
+        self.target_pos = torch.tensor([9, 9])
         
-        done = np.array_equal(self.agent_pos, self.target_pos)
+    def reset(self):
+        """Reset environment and return initial agent and target positions as tensors"""
+        # Random starting position (not on target)
+        self.agent_pos = torch.randint(0, self.size, (2,))
+        while torch.equal(self.agent_pos, self.target_pos):
+            self.agent_pos = torch.randint(0, self.size, (2,))
+            
+        return self.agent_pos.clone(), self.target_pos.clone()
+    
+    def step(self, action):
+        """
+        Take action (0:Up, 1:Down, 2:Left, 3:Right)
+        Returns: next_obs (agent_pos), reward, done
+        """
+        if self.agent_pos is None:
+            raise ValueError("Environment not reset. Call reset() first.")
+        
+        # Movement deltas
+        deltas = {
+            0: torch.tensor([-1, 0]),  # Up
+            1: torch.tensor([1, 0]),   # Down
+            2: torch.tensor([0, -1]),  # Left
+            3: torch.tensor([0, 1])    # Right
+        }
+        
+        delta = deltas[action]
+        next_pos = self.agent_pos + delta
+        
+        # Boundary check
+        next_pos = torch.clamp(next_pos, 0, self.size - 1)
+        self.agent_pos = next_pos
+        
+        # Check if target reached
+        done = torch.equal(self.agent_pos, self.target_pos)
         reward = 1.0 if done else -0.1
-        obs = np.concatenate([self.agent_pos, self.target_pos]).astype(np.float32)
-        return torch.from_numpy(obs), reward, done
+        
+        next_obs = self.agent_pos.clone()
+        
+        return next_obs, reward, done.item()
 
-# Global instance for Scaler validation
 def get_env():
+    """Returns an instance of OpenEnvNavigation"""
     return OpenEnvNavigation()
