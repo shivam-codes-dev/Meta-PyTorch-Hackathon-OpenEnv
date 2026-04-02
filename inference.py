@@ -1,33 +1,45 @@
+import os
+from openai import OpenAI
 import torch
-from your_module import OpenEnvNavigation, get_env  # Replace 'your_module' with actual module name
+from submission import get_env
 
-# Get environment
-env = get_env()
+# 1. Environment Variables (Checklist Rule: No hardcoded tokens)
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.scaler.com/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4")
+HF_TOKEN = os.getenv("HF_TOKEN")
 
-# Reset environment
-print("=== Reset Environment ===")
-agent_pos, target_pos = env.reset()
-print(f"Initial agent position: {agent_pos}")
-print(f"Target position: {target_pos}")
-print(f"Agent at target? {torch.equal(agent_pos, target_pos)}")
-print()
+# 2. Configure OpenAI Client
+client = OpenAI(
+    base_url=API_BASE_URL,
+    api_key=HF_TOKEN  # Checklist says use HF_TOKEN for auth
+)
 
-# Perform one step (move Right)
-print("=== Step 1: Action=3 (Right) ===")
-next_obs, reward, done = env.step(3)
-print(f"Next agent position: {next_obs}")
-print(f"Reward: {reward}")
-print(f"Done: {done}")
-print(f"Agent at target? {torch.equal(next_obs, target_pos)}")
-print()
+def run_inference():
+    print("START") # Required by Checklist
+    
+    env = get_env()
+    obs = env.reset()
+    
+    # 3. LLM Call using configured client
+    response = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=[{"role": "user", "content": f"Current observation: {obs.tolist()}. What is the next best move (0,1,2,3)?"}]
+    )
+    
+    # Simple logic to extract action from LLM response
+    action = 0 # Default
+    try:
+        content = response.choices[0].message.content
+        if "1" in content: action = 1
+        elif "2" in content: action = 2
+        elif "3" in content: action = 3
+    except:
+        pass
 
-# Verify boundary handling (try moving out of bounds)
-print("=== Boundary Test: From corner (0,0) move Left/Up ===")
-env.reset()  # Reset to potentially get corner position
-if list(env.agent_pos) == [0, 0]:
-    obs, r, d = env.step(2)  # Left from (0,0)
-    print(f"Move Left from (0,0): {obs}, reward: {r}, done: {d}")
-    obs, r, d = env.step(0)  # Up from (0,0)
-    print(f"Move Up from (0,0): {obs}, reward: {r}, done: {d}")
-else:
-    print("Didn't start at corner, but boundaries still work!")
+    obs, reward, done = env.step(action)
+    print(f"STEP: Action={action}, Reward={reward}") # Required format
+    
+    print("END") # Required by Checklist
+
+if __name__ == "__main__":
+    run_inference()
